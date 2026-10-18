@@ -885,7 +885,7 @@
           </div>
           <a
             class="proj-link"
-            href="https://gesatrans.id"
+            href="https://www.gesatrans.id"
             target="_blank"
             rel="noopener noreferrer"
             >Lihat proyek ↗</a
@@ -913,7 +913,7 @@
           </div>
           <a
             class="proj-link"
-            href="https://speedsindonesia.com"
+            href="https://www.speedsindonesia.com"
             target="_blank"
             rel="noopener noreferrer"
             >Lihat proyek ↗</a
@@ -1247,7 +1247,10 @@
             drag.yaw = drag.startYaw + (e.clientX - drag.startX) * 0.01;
             drag.pitch = Math.max(
               -0.65,
-              Math.min(0.65, drag.startPitch + (e.clientY - drag.startY) * 0.006),
+              Math.min(
+                0.65,
+                drag.startPitch + (e.clientY - drag.startY) * 0.006,
+              ),
             );
           });
           function stopDrag() {
