@@ -379,6 +379,9 @@
       .showcase-mobile {
         display: none;
       }
+      .model-viewer {
+        display: none;
+      }
       .model-loading {
         position: absolute;
         inset: 0;
@@ -700,8 +703,8 @@
         }
         .mobile-model-stage {
           position: relative;
-          aspect-ratio: 4 / 3;
-          min-height: 250px;
+          aspect-ratio: 1 / 1;
+          min-height: 280px;
           overflow: hidden;
           border-bottom: 1px solid var(--line);
           background: color-mix(in srgb, var(--card) 82%, var(--bg));
@@ -710,6 +713,23 @@
           display: block;
           width: 100%;
           height: 100%;
+          cursor: pointer;
+        }
+        .mobile-interact-hint {
+          position: absolute;
+          left: 50%;
+          bottom: 14px;
+          z-index: 1;
+          padding: 7px 12px;
+          transform: translateX(-50%);
+          border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+          border-radius: 99px;
+          background: color-mix(in srgb, var(--bg) 72%, transparent);
+          color: var(--fg);
+          font-size: 12px;
+          white-space: nowrap;
+          pointer-events: none;
+          backdrop-filter: blur(10px);
         }
         .mobile-product-copy {
           padding: 22px;
@@ -721,6 +741,85 @@
         }
         .mobile-product-copy .cta {
           margin-top: 20px;
+        }
+        body.model-viewer-open {
+          overflow: hidden;
+        }
+        .model-viewer {
+          position: fixed;
+          inset: 0;
+          z-index: 100;
+          display: grid;
+          place-items: center;
+          padding: max(12px, env(safe-area-inset-top, 0px)) 12px
+            max(12px, env(safe-area-inset-bottom, 0px));
+          background: rgba(4, 5, 10, 0.78);
+          opacity: 0;
+          visibility: hidden;
+          pointer-events: none;
+          backdrop-filter: blur(12px);
+          transition:
+            opacity 0.25s ease,
+            visibility 0.25s ease;
+        }
+        .model-viewer.open {
+          opacity: 1;
+          visibility: visible;
+          pointer-events: auto;
+        }
+        .model-viewer-dialog {
+          position: relative;
+          width: 100%;
+          height: min(78svh, 680px);
+          overflow: hidden;
+          border: 1px solid color-mix(in srgb, var(--line) 82%, white 18%);
+          border-radius: 24px;
+          background: color-mix(in srgb, var(--card) 86%, transparent);
+          box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
+        }
+        #model-viewer-canvas {
+          display: block;
+          width: 100%;
+          height: 100%;
+          cursor: grab;
+          touch-action: none;
+        }
+        #model-viewer-canvas.is-dragging {
+          cursor: grabbing;
+        }
+        .model-viewer-close {
+          position: absolute;
+          top: 14px;
+          right: 14px;
+          z-index: 4;
+          display: grid;
+          width: 42px;
+          height: 42px;
+          place-items: center;
+          border: 1px solid var(--line);
+          border-radius: 50%;
+          background: color-mix(in srgb, var(--bg) 76%, transparent);
+          color: var(--fg);
+          font: inherit;
+          font-size: 24px;
+          cursor: pointer;
+          backdrop-filter: blur(10px);
+        }
+        .model-viewer-help {
+          position: absolute;
+          left: 50%;
+          bottom: 18px;
+          z-index: 4;
+          width: max-content;
+          max-width: calc(100% - 32px);
+          padding: 8px 13px;
+          transform: translateX(-50%);
+          border-radius: 99px;
+          background: color-mix(in srgb, var(--bg) 72%, transparent);
+          color: var(--fg);
+          font-size: 12px;
+          text-align: center;
+          backdrop-filter: blur(10px);
         }
         #hero {
           min-height: auto;
@@ -909,11 +1008,13 @@
             <canvas
               class="mobile-model"
               data-model="pallet_single_side.glb"
-              aria-label="Model 3D Pallet KPN 1210 berputar otomatis"
+              data-title="Pallet Single Side KPN 1210"
+              aria-label="Buka model 3D Pallet KPN 1210 interaktif"
             ></canvas>
             <div class="model-loading" role="status" aria-live="polite">
               <span>Memuat model 3D...</span>
             </div>
+            <span class="mobile-interact-hint">Ketuk untuk berinteraksi</span>
           </div>
           <div class="mobile-product-copy">
             <span class="tag">01 / Single Side &middot; KPN 1210</span>
@@ -929,11 +1030,13 @@
             <canvas
               class="mobile-model"
               data-model="pallet_double_side.glb"
-              aria-label="Model 3D Pallet KPN 1212 berputar otomatis"
+              data-title="Pallet Double Side KPN 1212"
+              aria-label="Buka model 3D Pallet KPN 1212 interaktif"
             ></canvas>
             <div class="model-loading" role="status" aria-live="polite">
               <span>Memuat model 3D...</span>
             </div>
+            <span class="mobile-interact-hint">Ketuk untuk berinteraksi</span>
           </div>
           <div class="mobile-product-copy">
             <span class="tag">02 / Double Side &middot; KPN 1212</span>
@@ -954,6 +1057,34 @@
         </article>
       </div>
     </section>
+
+    <div
+      class="model-viewer"
+      id="model-viewer"
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+      aria-labelledby="model-viewer-title"
+    >
+      <div class="model-viewer-dialog">
+        <h2 id="model-viewer-title" hidden>Viewer produk 3D</h2>
+        <canvas
+          id="model-viewer-canvas"
+          aria-label="Viewer produk 3D interaktif"
+        ></canvas>
+        <div class="model-loading" role="status" aria-live="polite">
+          <span>Memuat model 3D...</span>
+        </div>
+        <button
+          class="model-viewer-close"
+          type="button"
+          aria-label="Tutup viewer 3D"
+        >
+          &times;
+        </button>
+        <p class="model-viewer-help">Geser dengan satu jari untuk memutar</p>
+      </div>
+    </div>
 
     <section id="stack">
       <span class="tag rv">Yang aku kerjakan</span>
@@ -1481,10 +1612,22 @@
         }
 
         function initMobile3D() {
+          var openMobileViewer = initMobileViewer();
           document.querySelectorAll(".mobile-model").forEach(function (cv) {
             var loading = cv.parentElement.querySelector(".model-loading"),
               loadingText = loading.querySelector("span"),
               R;
+            cv.tabIndex = 0;
+            cv.setAttribute("role", "button");
+            cv.addEventListener("click", function () {
+              openMobileViewer(cv.dataset.model, cv.dataset.title);
+            });
+            cv.addEventListener("keydown", function (event) {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openMobileViewer(cv.dataset.model, cv.dataset.title);
+              }
+            });
             try {
               R = new THREE.WebGLRenderer({
                 canvas: cv,
@@ -1518,7 +1661,7 @@
                   bounds = new THREE.Box3().setFromObject(model),
                   size = bounds.getSize(new THREE.Vector3()),
                   center = bounds.getCenter(new THREE.Vector3()),
-                  scale = 9 / Math.max(size.x, size.y, size.z);
+                  scale = 10.5 / Math.max(size.x, size.y, size.z);
                 model.scale.setScalar(scale);
                 model.position.copy(center).multiplyScalar(-scale);
                 model.traverse(function (node) {
@@ -1546,7 +1689,7 @@
               if (!w || !h) return;
               R.setSize(w, h, false);
               C.aspect = w / h;
-              C.position.set(0, 5.5, 24);
+              C.position.set(0, 5, 22.5);
               C.lookAt(0, 0, 0);
               C.updateProjectionMatrix();
             }
@@ -1569,6 +1712,197 @@
             }
             requestAnimationFrame(renderMobileModel);
           });
+        }
+
+        function initMobileViewer() {
+          var modal = document.getElementById("model-viewer"),
+            canvas = document.getElementById("model-viewer-canvas"),
+            closeButton = modal.querySelector(".model-viewer-close"),
+            title = document.getElementById("model-viewer-title"),
+            loading = modal.querySelector(".model-loading"),
+            loadingText = loading.querySelector("span"),
+            renderer,
+            scene,
+            camera,
+            root,
+            initialized = false,
+            opened = false,
+            loadedFile = "",
+            loadRequest = 0,
+            previousFocus = null,
+            modelCache = {},
+            drag = { active: false, x: 0, y: 0 };
+
+          function setLoading(state, message) {
+            loading.classList.remove("done", "failed");
+            loading.removeAttribute("aria-hidden");
+            loadingText.textContent = message || "Memuat model 3D...";
+            if (state === "done") {
+              loading.classList.add("done");
+              loading.setAttribute("aria-hidden", "true");
+            } else if (state === "failed") {
+              loading.classList.add("failed");
+            }
+          }
+
+          function resizeViewer() {
+            if (!renderer) return;
+            var w = canvas.clientWidth,
+              h = canvas.clientHeight;
+            if (!w || !h) return;
+            renderer.setSize(w, h, false);
+            camera.aspect = w / h;
+            camera.position.set(0, 5.5, w / h < 0.75 ? 27 : 23);
+            camera.lookAt(0, 0, 0);
+            camera.updateProjectionMatrix();
+          }
+
+          function initializeViewer() {
+            if (initialized) return Boolean(renderer);
+            initialized = true;
+            try {
+              renderer = new THREE.WebGLRenderer({
+                canvas: canvas,
+                alpha: true,
+                antialias: true,
+                powerPreference: "low-power",
+              });
+            } catch (error) {
+              setLoading("failed", "Preview 3D tidak didukung perangkat ini.");
+              return false;
+            }
+            renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+            root = new THREE.Group();
+            scene.add(new THREE.HemisphereLight(0xffffff, 0x223355, 1));
+            var light = new THREE.DirectionalLight(0xffffff, 1.2);
+            light.position.set(6, 12, 8);
+            scene.add(light);
+            scene.add(root);
+            new ResizeObserver(resizeViewer).observe(canvas);
+
+            canvas.addEventListener("pointerdown", function (event) {
+              if (event.pointerType === "mouse" && event.button !== 0) return;
+              drag.active = true;
+              drag.x = event.clientX;
+              drag.y = event.clientY;
+              canvas.setPointerCapture(event.pointerId);
+              canvas.classList.add("is-dragging");
+              event.preventDefault();
+            });
+            canvas.addEventListener("pointermove", function (event) {
+              if (!drag.active || !root) return;
+              var dx = event.clientX - drag.x,
+                dy = event.clientY - drag.y;
+              root.rotation.y += dx * 0.012;
+              root.rotation.x = Math.max(
+                -0.65,
+                Math.min(0.65, root.rotation.x + dy * 0.008),
+              );
+              drag.x = event.clientX;
+              drag.y = event.clientY;
+              event.preventDefault();
+            });
+            function stopViewerDrag() {
+              drag.active = false;
+              canvas.classList.remove("is-dragging");
+            }
+            canvas.addEventListener("pointerup", stopViewerDrag);
+            canvas.addEventListener("pointercancel", stopViewerDrag);
+            canvas.addEventListener("lostpointercapture", stopViewerDrag);
+
+            function renderViewer() {
+              requestAnimationFrame(renderViewer);
+              if (!opened || !loadedFile || document.hidden) return;
+              renderer.render(scene, camera);
+            }
+            requestAnimationFrame(renderViewer);
+            return true;
+          }
+
+          function displayViewerModel(source, file, request) {
+            if (request !== loadRequest) return;
+            while (root.children.length) root.remove(root.children[0]);
+            var model = source.clone(true),
+              bounds = new THREE.Box3().setFromObject(model),
+              size = bounds.getSize(new THREE.Vector3()),
+              center = bounds.getCenter(new THREE.Vector3()),
+              scale = 11.5 / Math.max(size.x, size.y, size.z);
+            model.scale.setScalar(scale);
+            model.position.copy(center).multiplyScalar(-scale);
+            model.traverse(function (node) {
+              if (node.isMesh) {
+                node.castShadow = true;
+                node.receiveShadow = true;
+              }
+            });
+            root.rotation.set(0.16, 0, 0);
+            root.add(model);
+            loadedFile = file;
+            setLoading("done");
+          }
+
+          function loadViewerModel(file) {
+            var request = ++loadRequest;
+            loadedFile = "";
+            setLoading("loading");
+            if (modelCache[file]) {
+              displayViewerModel(modelCache[file], file, request);
+              return;
+            }
+            new THREE.GLTFLoader().load(
+              file,
+              function (gltf) {
+                modelCache[file] = gltf.scene;
+                displayViewerModel(gltf.scene, file, request);
+              },
+              undefined,
+              function (error) {
+                if (request !== loadRequest) return;
+                console.error("Gagal memuat model viewer:", file, error);
+                setLoading("failed", "Model 3D gagal dimuat.");
+              },
+            );
+          }
+
+          function closeViewer() {
+            if (!opened) return;
+            opened = false;
+            drag.active = false;
+            canvas.classList.remove("is-dragging");
+            modal.classList.remove("open");
+            modal.setAttribute("aria-hidden", "true");
+            document.body.classList.remove("model-viewer-open");
+            if (previousFocus && previousFocus.focus) previousFocus.focus();
+          }
+
+          closeButton.addEventListener("click", closeViewer);
+          modal.addEventListener("pointerdown", function (event) {
+            if (event.target === modal) closeViewer();
+          });
+          document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && opened) closeViewer();
+          });
+
+          return function openViewer(file, productTitle) {
+            previousFocus = document.activeElement;
+            opened = true;
+            title.textContent = productTitle || "Viewer produk 3D";
+            canvas.setAttribute(
+              "aria-label",
+              (productTitle || "Produk 3D") + " interaktif",
+            );
+            modal.classList.add("open");
+            modal.setAttribute("aria-hidden", "false");
+            document.body.classList.add("model-viewer-open");
+            requestAnimationFrame(function () {
+              if (!initializeViewer()) return;
+              resizeViewer();
+              if (loadedFile !== file) loadViewerModel(file);
+              closeButton.focus();
+            });
+          };
         }
       })();
     </script>
