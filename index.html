@@ -1082,7 +1082,9 @@
         >
           &times;
         </button>
-        <p class="model-viewer-help">Geser dengan satu jari untuk memutar</p>
+        <p class="model-viewer-help">
+          Geser 1 jari untuk memutar &middot; Cubit 2 jari untuk zoom
+        </p>
       </div>
     </div>
 
@@ -1731,7 +1733,9 @@
             loadRequest = 0,
             previousFocus = null,
             modelCache = {},
-            drag = { active: false, x: 0, y: 0 };
+            pointers = {},
+            drag = { active: false, x: 0, y: 0 },
+            pinch = { distance: 0, zoom: 1 };
 
           function setLoading(state, message) {
             loading.classList.remove("done", "failed");
@@ -1782,31 +1786,71 @@
             scene.add(root);
             new ResizeObserver(resizeViewer).observe(canvas);
 
+            function activePointers() {
+              return Object.keys(pointers).map(function (id) {
+                return pointers[id];
+              });
+            }
+            function pointerDistance(points) {
+              var dx = points[0].x - points[1].x,
+                dy = points[0].y - points[1].y;
+              return Math.hypot(dx, dy);
+            }
+            function updateGestureStart() {
+              var points = activePointers();
+              if (points.length === 0) {
+                drag.active = false;
+                canvas.classList.remove("is-dragging");
+              } else if (points.length === 1) {
+                drag.active = true;
+                drag.x = points[0].x;
+                drag.y = points[0].y;
+                canvas.classList.add("is-dragging");
+              } else {
+                drag.active = false;
+                pinch.distance = pointerDistance(points);
+                pinch.zoom = camera.zoom;
+                canvas.classList.add("is-dragging");
+              }
+            }
+
             canvas.addEventListener("pointerdown", function (event) {
               if (event.pointerType === "mouse" && event.button !== 0) return;
-              drag.active = true;
-              drag.x = event.clientX;
-              drag.y = event.clientY;
+              pointers[event.pointerId] = {
+                x: event.clientX,
+                y: event.clientY,
+              };
               canvas.setPointerCapture(event.pointerId);
-              canvas.classList.add("is-dragging");
+              updateGestureStart();
               event.preventDefault();
             });
             canvas.addEventListener("pointermove", function (event) {
-              if (!drag.active || !root) return;
-              var dx = event.clientX - drag.x,
-                dy = event.clientY - drag.y;
-              root.rotation.y += dx * 0.012;
-              root.rotation.x = Math.max(
-                -0.65,
-                Math.min(0.65, root.rotation.x + dy * 0.008),
-              );
-              drag.x = event.clientX;
-              drag.y = event.clientY;
+              if (!pointers[event.pointerId] || !root) return;
+              pointers[event.pointerId].x = event.clientX;
+              pointers[event.pointerId].y = event.clientY;
+              var points = activePointers();
+              if (points.length >= 2) {
+                var distance = pointerDistance(points);
+                if (pinch.distance > 0) {
+                  camera.zoom = Math.max(
+                    0.65,
+                    Math.min(2.5, pinch.zoom * (distance / pinch.distance)),
+                  );
+                  camera.updateProjectionMatrix();
+                }
+              } else if (drag.active) {
+                var dx = event.clientX - drag.x,
+                  dy = event.clientY - drag.y;
+                root.rotation.y += dx * 0.012;
+                root.rotation.x += dy * 0.012;
+                drag.x = event.clientX;
+                drag.y = event.clientY;
+              }
               event.preventDefault();
             });
-            function stopViewerDrag() {
-              drag.active = false;
-              canvas.classList.remove("is-dragging");
+            function stopViewerDrag(event) {
+              delete pointers[event.pointerId];
+              updateGestureStart();
             }
             canvas.addEventListener("pointerup", stopViewerDrag);
             canvas.addEventListener("pointercancel", stopViewerDrag);
@@ -1838,6 +1882,8 @@
               }
             });
             root.rotation.set(0.16, 0, 0);
+            camera.zoom = 1;
+            camera.updateProjectionMatrix();
             root.add(model);
             loadedFile = file;
             setLoading("done");
@@ -1870,6 +1916,7 @@
             if (!opened) return;
             opened = false;
             drag.active = false;
+            pointers = {};
             canvas.classList.remove("is-dragging");
             modal.classList.remove("open");
             modal.setAttribute("aria-hidden", "true");
