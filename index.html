@@ -370,6 +370,11 @@
         inset: 0;
         width: 100%;
         height: 100%;
+        cursor: grab;
+        touch-action: pan-y;
+      }
+      #c3d.is-dragging {
+        cursor: grabbing;
       }
       .model-note {
         position: absolute;
@@ -781,7 +786,8 @@
           <h2 style="font-size: 28px">Pallet 120×100×15 cm</h2>
           <p>
             Kuat menahan beban statis 1,3 ton dan beban dinamis 0,8 ton. Coba
-            scroll untuk melihatnya dari berbagai sisi.
+            scroll untuk melihatnya dari berbagai sisi, atau klik-tahan lalu
+            geser model untuk memutarnya 360&deg;.
           </p>
         </div>
         <div class="step" data-s="1">
@@ -1212,16 +1218,45 @@
           root.add(B);
           root.position.y = -0.8;
           S.add(root);
-          var mx = 0,
-            my = 0;
-          addEventListener(
-            "pointermove",
-            function (e) {
-              mx = e.clientX / innerWidth - 0.5;
-              my = e.clientY / innerHeight - 0.5;
-            },
-            { passive: true },
-          );
+          var hoverX = 0,
+            hoverY = 0,
+            drag = {
+              active: false,
+              startX: 0,
+              startY: 0,
+              startYaw: 0,
+              startPitch: 0,
+              yaw: 0,
+              pitch: 0,
+            };
+          cv.addEventListener("pointerdown", function (e) {
+            if (e.pointerType === "mouse" && e.button !== 0) return;
+            drag.active = true;
+            drag.startX = e.clientX;
+            drag.startY = e.clientY;
+            drag.startYaw = drag.yaw;
+            drag.startPitch = drag.pitch;
+            cv.setPointerCapture(e.pointerId);
+            cv.classList.add("is-dragging");
+            e.preventDefault();
+          });
+          cv.addEventListener("pointermove", function (e) {
+            hoverX = e.clientX / innerWidth - 0.5;
+            hoverY = e.clientY / innerHeight - 0.5;
+            if (!drag.active) return;
+            drag.yaw = drag.startYaw + (e.clientX - drag.startX) * 0.01;
+            drag.pitch = Math.max(
+              -0.65,
+              Math.min(0.65, drag.startPitch + (e.clientY - drag.startY) * 0.006),
+            );
+          });
+          function stopDrag() {
+            drag.active = false;
+            cv.classList.remove("is-dragging");
+          }
+          cv.addEventListener("pointerup", stopDrag);
+          cv.addEventListener("pointercancel", stopDrag);
+          cv.addEventListener("lostpointercapture", stopDrag);
           function rs() {
             var w = cv.clientWidth,
               h = cv.clientHeight;
@@ -1256,8 +1291,8 @@
             B.rotation.y = b * Math.PI * 2 - (1 - sw) * 0.8;
             A.position.x = -sw * 26;
             B.position.x = (1 - sw) * 26;
-            root.rotation.y = mx * 0.3;
-            root.rotation.x = my * 0.2;
+            root.rotation.y = drag.yaw + (drag.active ? 0 : hoverX * 0.12);
+            root.rotation.x = drag.pitch + (drag.active ? 0 : hoverY * 0.08);
             R.render(S, C);
           };
           tick();
